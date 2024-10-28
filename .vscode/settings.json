@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "buf.C": "cpp",
+        "page.C": "cpp",
+        "testbuf.C": "cpp",
+        "bufHash.C": "cpp"
+    }
+}
