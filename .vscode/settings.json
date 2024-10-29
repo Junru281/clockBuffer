@@ -3,6 +3,8 @@
         "buf.C": "cpp",
         "page.C": "cpp",
         "testbuf.C": "cpp",
-        "bufHash.C": "cpp"
+        "bufHash.C": "cpp",
+        "db.C": "cpp",
+        "error.C": "cpp"
     }
 }
