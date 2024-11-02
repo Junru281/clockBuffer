@@ -110,10 +110,65 @@ const Status BufMgr::readPage(File *file, const int PageNo, Page *&page)
 const Status BufMgr::unPinPage(File *file, const int PageNo,
                                const bool dirty)
 {
+    int frameNo;
+    Status status = hashTable->lookup(file, PageNo, frameNo);
+
+    // Check if the page is in the buffer table
+    if (status == HASHNOTFOUND)
+    {
+        return status;
+    }
+    // Checks if page is pinned
+    if (bufTable[frameNo].pinCnt == 0)
+    {
+        return PAGENOTPINNED;
+    }
+    // decrement pin count
+    bufTable[frameNo].pinCnt--;
+
+
+    if (dirty)
+    {
+        bufTable[frameNo].dirty = true;
+    }
+    return OK;
+
+
 }
 
 const Status BufMgr::allocPage(File *file, int &pageNo, Page *&page)
 {
+    //Allocate a new page in the file, updating the page number reference
+    file->allocatePage(pageNo);
+    int frameNo = 0;
+
+    Status allocStatus = allocBuf(frameNo);
+
+    if (allocStatus == BUFFEREXCEEDED)
+    {
+        return BUFFEREXCEEDED;
+    }
+    else if (allocStatus == UNIXERR)
+    {
+        return UNIXERR;
+    }
+
+    //Initialize the frame in the buffer table for the allocated page
+    page = &bufPool[frameNo];
+
+    bufTable[frameNo].Set(file, pageNo);
+
+    //Insert the new page-frame mapping into the hash table
+    Status insertStatus = hashTable->insert(file, pageNo, frameNo);
+    
+    if (insertStatus == HASHTBLERROR)
+    {
+        return HASHTBLERROR;
+    }
+
+    return OK;
+
+
 }
 
 const Status BufMgr::disposePage(File *file, const int pageNo)
