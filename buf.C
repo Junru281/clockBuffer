@@ -205,7 +205,7 @@ const Status BufMgr::unPinPage(File *file, const int PageNo,
 
 const Status BufMgr::allocPage(File *file, int &pageNo, Page *&page)
 {
-    //Allocate a new page in the file, updating the page number reference
+    
     file->allocatePage(pageNo);
     int frameNo = 0;
 
