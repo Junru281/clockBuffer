@@ -69,6 +69,54 @@ BufMgr::~BufMgr()
 
 const Status BufMgr::allocBuf(int &frame)
 {
+    int allocBufcount=0; 
+    advanceClock();
+    //move clockhand to next frame
+    Status WStatus = OK;
+    //record writing to disk, if it's OK all the time then there's no I/O error
+
+    do{
+    if (bufTable[clockHand].valid==false) {
+        frame = clockHand; 
+        //current frame
+        bufTable[frame].Clear(); 
+        //clear the current frame
+        return OK;
+    }
+    //first examine if it's valid, if not clear it
+
+        if (bufTable[clockHand].refbit==true) {
+            bufTable[clockHand].refbit = false;
+            advanceClock();
+            //move clockhand to next frame
+        } 
+//change true refbit for next round
+        else {
+            if (bufTable[clockHand].pinCnt==0) {
+                 // if nothing is using this page
+                 if (bufTable[clockHand].dirty) {
+                    WStatus = bufTable[clockHand].file->writePage(bufTable[clockHand].pageNo, &bufPool[clockHand]);
+                    // write to disk
+                    if (WStatus==UNIXERR)
+                        return UNIXERR;
+                        // if I/O not successful return UNIXERR(defined in error.h)
+                 }
+
+                hashTable->remove(bufTable[clockHand].file, bufTable[clockHand].pageNo);
+                // remove page from hashtable                
+                frame = clockHand;
+                //current frame
+                bufTable[frame].Clear();
+                //clear it
+                return OK;
+            }
+        }       
+    } while (allocBufcount++ < numBufs);
+    //allocBufcount+1 for every circulation, until it is bigger than numBufs(this round is over)
+    
+    return BUFFEREXCEEDED;
+   //if we got into this line it means that all the pages are pinned(pinCnt>0) or all refbits are 1
+   //return BUFFEREXCEEDED(defined in error.h)
 }
 
 const Status BufMgr::readPage(File *file, const int PageNo, Page *&page)
