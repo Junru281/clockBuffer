@@ -90,7 +90,7 @@ const Status BufMgr::allocBuf(int &frame)
             advanceClock();
             //move clockhand to next frame
         } 
-//change true refbit for next round
+        //change true refbit for next round
         else {
             if (bufTable[clockHand].pinCnt==0) {
                  // if nothing is using this page
