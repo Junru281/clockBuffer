@@ -121,37 +121,37 @@ const Status BufMgr::allocBuf(int &frame)
 
 const Status BufMgr::readPage(File *file, const int PageNo, Page *&page)
 {
-    Status hashStatus = OK;
-    Status allocStatus = OK;
-    Status fileStatus = OK;
-    Status insertStatus = OK;
+    Status status_hash = OK;
+    Status status_alloc = OK;
+    Status status_file = OK;
+    Status status_insert = OK;
     int frameNo = 0;
-    hashStatus = hashTable->lookup(file, PageNo, frameNo);
+    status_hash = hashTable->lookup(file, PageNo, frameNo);
     // Case 1) Page is not in the buffer pool.  
-    if (hashStatus == HASHNOTFOUND)
+    if (status_hash == HASHNOTFOUND)
     {
         // Call allocBuf() to allocate a buffer frame
-        allocStatus = allocBuf(frameNo);
+        status_alloc = allocBuf(frameNo);
         // BUFFEREXCEEDED if all pages have been pinned/actively used
-        if (allocStatus == BUFFEREXCEEDED) {
+        if (status_alloc == BUFFEREXCEEDED) {
             return BUFFEREXCEEDED;  
         }
         // UNIXERR if a Unix error occurred
-        else if (allocStatus == UNIXERR){
+        else if (status_alloc == UNIXERR){
             return UNIXERR;  
         }
         else {
             // call the method file->readPage() to read the page from disk into the buffer pool frame.     
-            fileStatus = file->readPage(PageNo, &bufPool[frameNo]);
-            if(fileStatus != OK){
-                return fileStatus;
+            status_file = file->readPage(PageNo, &bufPool[frameNo]);
+            if(status_file != OK){
+                return status_file;
             }
             // Finally, invoke Set() on the frame to set it up properly. 
             // Set() will leave the pinCnt for the page set to 1.  
             bufTable[frameNo].Set(file, PageNo);    
-            insertStatus = hashTable->insert(file, PageNo, frameNo);
+            status_insert = hashTable->insert(file, PageNo, frameNo);
             // HASHTBLERROR if a hash table error occurred.
-            if(insertStatus == HASHTBLERROR) {
+            if(status_insert == HASHTBLERROR) {
                 return HASHTBLERROR;
             }else {
                 // Return a pointer to the frame containing the page via the page parameter.    
@@ -160,7 +160,7 @@ const Status BufMgr::readPage(File *file, const int PageNo, Page *&page)
         }
     }
     // Case 2) Page is in the buffer pool.  
-    else if (hashStatus == OK)
+    else if (status_hash == OK)
     {
         // get the frame metadata
         BufDesc *tmpbuf = &(bufTable[frameNo]);
