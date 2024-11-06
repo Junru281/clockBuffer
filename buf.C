@@ -205,17 +205,17 @@ const Status BufMgr::unPinPage(File *file, const int PageNo,
 
 const Status BufMgr::allocPage(File *file, int &pageNo, Page *&page)
 {
-    
+    //Allocate a new page in the file, updating the page number reference
     file->allocatePage(pageNo);
     int frameNo = 0;
 
-    Status allocStatus = allocBuf(frameNo);
+    Status Status_Alloc = allocBuf(frameNo);
 
-    if (allocStatus == BUFFEREXCEEDED)
+    if (Status_Alloc == BUFFEREXCEEDED)
     {
         return BUFFEREXCEEDED;
     }
-    else if (allocStatus == UNIXERR)
+    else if (Status_Alloc == UNIXERR)
     {
         return UNIXERR;
     }
@@ -226,17 +226,15 @@ const Status BufMgr::allocPage(File *file, int &pageNo, Page *&page)
     bufTable[frameNo].Set(file, pageNo);
 
     //Insert the new page-frame mapping into the hash table
-    Status insertStatus = OK;
-    insertStatus = hashTable->insert(file, pageNo, frameNo);
+    Status Status_Insert = OK;
+    Status_Insert = hashTable->insert(file, pageNo, frameNo);
     
-    if (insertStatus == HASHTBLERROR)
+    if (Status_Insert == HASHTBLERROR)
     {
         return HASHTBLERROR;
     }
 
     return OK;
-
-
 }
 
 const Status BufMgr::disposePage(File *file, const int pageNo)
