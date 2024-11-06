@@ -121,38 +121,57 @@ const Status BufMgr::allocBuf(int &frame)
 
 const Status BufMgr::readPage(File *file, const int PageNo, Page *&page)
 {
-    Status status = OK;
-    int frameNo;
-    status = hashTable->lookup(file, PageNo, frameNo);
-    if (status == OK)
+    Status hashStatus = OK;
+    Status allocStatus = OK;
+    Status fileStatus = OK;
+    Status insertStatus = OK;
+    int frameNo = 0;
+    hashStatus = hashTable->lookup(file, PageNo, frameNo);
+    // Case 1) Page is not in the buffer pool.  
+    if (hashStatus == HASHNOTFOUND)
+    {
+        // Call allocBuf() to allocate a buffer frame
+        allocStatus = allocBuf(frameNo);
+        // BUFFEREXCEEDED if all pages have been pinned/actively used
+        if (allocStatus == BUFFEREXCEEDED) {
+            return BUFFEREXCEEDED;  
+        }
+        // UNIXERR if a Unix error occurred
+        else if (allocStatus == UNIXERR){
+            return UNIXERR;  
+        }
+        else {
+            // call the method file->readPage() to read the page from disk into the buffer pool frame.     
+            fileStatus = file->readPage(PageNo, &bufPool[frameNo]);
+            if(fileStatus != OK){
+                return fileStatus;
+            }
+            // Finally, invoke Set() on the frame to set it up properly. 
+            // Set() will leave the pinCnt for the page set to 1.  
+            bufTable[frameNo].Set(file, PageNo);    
+            insertStatus = hashTable->insert(file, PageNo, frameNo);
+            // HASHTBLERROR if a hash table error occurred.
+            if(insertStatus == HASHTBLERROR) {
+                return HASHTBLERROR;
+            }else {
+                // Return a pointer to the frame containing the page via the page parameter.    
+                page = &bufPool[frameNo];
+            }
+        }
+    }
+    // Case 2) Page is in the buffer pool.  
+    else if (hashStatus == OK)
     {
         // get the frame metadata
         BufDesc *tmpbuf = &(bufTable[frameNo]);
+        // In this case set the appropriate refbit
         tmpbuf->refbit = true;
+        // increment the pinCnt for the page
         tmpbuf->pinCnt += 1;
-        // return the pointer to the actual page
+        // return a pointer to the frame containing the page via the page parameter.
         page = &bufPool[frameNo];
     }
-    else if (status == HASHNOTFOUND)
-    {
-
-        status = allocBuf(frameNo);
-        // if all pages have been pinned/ actively used
-        if (status == BUFFEREXCEEDED) {
-            return BUFFEREXCEEDED;  
-        }
-
-        // Page *bufferFrame = new Page();         
-        status = file->readPage(PageNo, &bufPool[frameNo]);
-        hashTable->insert(file, PageNo, frameNo);
-        bufTable[frameNo].Set(file, PageNo);     
-        bufTable[frameNo].pinCnt = 1;            
-        page = &bufPool[frameNo];
-    }
-    else
-    {
-        return status;
-    }
+    return OK;
 }
 
 const Status BufMgr::unPinPage(File *file, const int PageNo,
@@ -207,7 +226,8 @@ const Status BufMgr::allocPage(File *file, int &pageNo, Page *&page)
     bufTable[frameNo].Set(file, pageNo);
 
     //Insert the new page-frame mapping into the hash table
-    Status insertStatus = hashTable->insert(file, pageNo, frameNo);
+    Status insertStatus = OK;
+    insertStatus = hashTable->insert(file, pageNo, frameNo);
     
     if (insertStatus == HASHTBLERROR)
     {
